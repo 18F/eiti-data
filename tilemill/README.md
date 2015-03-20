@@ -39,8 +39,8 @@ it as needed, but the downside is that we do still have to put these files in
 git. In the future we could change the `project.mml` files to point at URLs
 for the data.
 
-For an example, see the [fedlands project.mml](fedland/project.mml#L46) and its
-[data directory](fedlands/data).
+For an example, see [fedland/project.mml](fedland/project.mml#L46) and the
+corresponding [data directory](fedlands/data).
 
 [TileMill]: https://www.mapbox.com/tilemill/
 [Download]: https://www.mapbox.com/tilemill/
