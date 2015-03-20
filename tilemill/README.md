@@ -14,6 +14,7 @@ project that you want to open, do the following:
     # substitute "fedland" here with the name of the appropriate project directory
     ln -s fedland ~/Documents/Mapbox/project
     ```
+
 5. Reopen TileMill. The project should be visible in the project list when it
    starts up. Double-click it to ensure that the data is loading.
 
@@ -34,9 +35,10 @@ directory, we're putting zipped Shapefiles in a `data` subdirectory of each
 project. (Relative parent paths in `project.mml` won't work with our symlinks
 because the paths are resolved as though they're relative to the TileMill
 projects directory.) This means that TileMill can find the data file and cache
-it as needed , but the downside is that we do still have to put these files in
-git. We could change the `project.mml` files to point at URLs for the data, but
-¯\_(ツ)_/¯.
+it as needed, but the downside is that we do still have to put these files in
+git. In the future we could change the `project.mml` files to point at URLs
+for the data.
 
 [TileMill]: https://www.mapbox.com/tilemill/
+[Download]: https://www.mapbox.com/tilemill/
 [CartoCSS]: https://www.mapbox.com/tilemill/docs/manual/carto/
