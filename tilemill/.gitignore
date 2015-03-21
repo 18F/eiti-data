@@ -1,1 +1,7 @@
+# ignore unzipped ESRI Shapefile data
+*.shp
+*.prj
+*.dbf
+*.shx
+# ignore TileMill-created layers directories
 */layers
