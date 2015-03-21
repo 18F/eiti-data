@@ -1,9 +1,9 @@
 {
   "bounds": [
-    -128.0566,
-    16.1303,
-    -63.2812,
-    51.2894
+    -126.2988,
+    23.7653,
+    -66.0058,
+    50.0642
   ],
   "center": [
     -98.5254,
@@ -28,7 +28,7 @@
         "file": "http://mapbox-geodata.s3.amazonaws.com/natural-earth-1.4.0/cultural/10m-admin-0-countries.zip",
         "type": "shape",
         "id": "countries",
-        "project": "eiti-maps",
+        "project": "fedland",
         "srs": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over"
       }
     },
@@ -45,7 +45,7 @@
       "Datasource": {
         "file": "data/fedland.zip",
         "id": "fedland",
-        "project": "eiti-maps",
+        "project": "fedland",
         "srs": ""
       },
       "srs-name": "autodetect",
