@@ -1,4 +1,7 @@
 # Tribal Areas
+
+![](https://raw.githubusercontent.com/18F/eiti-maps/master/tilemill/tribal-areas/preview.png)
+
 This map shows all US Tribal areas. The data is from
 [US Census 2013 2013 TIGER/Line Shapefiles: American Indian Area Geography](https://www.census.gov/cgi-bin/geo/shapefiles2013/layers.cgi).
 
