@@ -1,4 +1,7 @@
 # Federal Lands
+
+![](https://raw.githubusercontent.com/18F/eiti-maps/master/tilemill/fedland/preview.png)
+
 This map shows all Federal lands. The data is from [USGS](http://catalog.data.gov/dataset/usgs-small-scale-dataset-federal-lands-of-the-united-states-200606-shapefile)
 and can be downloaded directly at:
 
