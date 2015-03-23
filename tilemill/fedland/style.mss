@@ -1,7 +1,7 @@
-@color1: #B9D2B1;
+@color1: #B1C9A9;
 @color2: #DDB2A1;
-@color3: #C1BDA0;
-@color4: #F1D6B8;
+@color3: #BCB89C;
+@color4: #EAD0B2;
 @color5: #ECCDF2;
 @darken: .9;
 
@@ -10,13 +10,10 @@ Map {
 }
 
 #countries {
-  line-color: #999;
-  line-width: 1;
-  line-join: round;
   polygon-fill: #eee;
   
   [ADM0_A3="USA"] {
-    polygon-fill: #ffe;
+    polygon-fill: #fff;
   }
 }
 
