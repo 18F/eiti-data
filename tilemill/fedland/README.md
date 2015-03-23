@@ -9,8 +9,8 @@ and can be downloaded directly at:
 http://dds.cr.usgs.gov/pub/data/nationalatlas/fedlanp020_nt00012.tar.gz
 ```
 
-For this repository I've reprojected the data into the [Google Mercator
-projection], which makes it faster to render in TileMill because it won't have
+I've reprojected the data into the [Google Mercator projection],
+which makes it faster to render in TileMill because it won't have
 to be reprojected on the fly. I used [ogr2ogr] to reproject it:
 
 ```sh
