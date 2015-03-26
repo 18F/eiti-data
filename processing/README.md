@@ -85,7 +85,8 @@ You should see something like this when you zoom in:
 
 [PostGIS]: http://postgis.net/
 [PostgreSQL]: http://www.postgresql.org/
-[ST_Collect()]: http://postgis.refractions.net/documentation/manual-1.4/ST_Collect.html
-[ST_Union()]: http://postgis.refractions.net/documentation/manual-1.4/ST_Union.html
+[ST_Collect()]: http://www.postgis.org/docs/ST_Collect.html
+[ST_Union()]: http://www.postgis.org/docs/ST_Union.html
 [cascading union]: http://lin-ear-th-inking.blogspot.com/2007/11/fast-polygon-merging-in-jts-using.html
 [spatial index]: http://revenant.ca/www/postgis/workshop/indexing.html
+[ST_Buffer()]: http://www.postgis.org/docs/ST_Buffer.html
