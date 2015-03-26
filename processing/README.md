@@ -37,8 +37,14 @@ shp2pgsql -d -I -s EPSG:900913 $shp fedland | psql eiti-maps
 
 ## Merging Shapefiles
 The `merge.sh` script and its accompanying `merge*.sql` files create a single
-shape that represents the *union* of Federally and Tribally managed lands. The
-process is basically:
+shape that represents the *union* of Federally and Tribally managed lands.
+To run it, simply run this in your shell from this directory:
+
+```sh
+./merge.sh
+```
+
+This does the following:
 
 1. Import the Shapefiles for each layer into their own tables using
    `shp2pgsql`.
@@ -50,7 +56,7 @@ process is basically:
 5. Buffer the resulting shape with [ST_Buffer()] as necessary to close any gaps
    between very close (but not coincident) shapes.
 
-My first successful run of `merge.sh` took 2 hours all told: about half an hour
+My first successful run of `merge.sh` took 2 hours in total: about half an hour
 to import the Shapefiles, collect the geometries and add the [spatial index];
 then an hour and a half for the union, and only a couple of minutes for the
 buffer.
