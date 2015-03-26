@@ -66,22 +66,27 @@ to any of the projects, specifying:
 Then add the following CartoCSS to your stylesheet:
 
 ```carto
-#merge[id='federal'] {
-  line-color: #999;
-}
-
-#merge[id='buffered'] {
-  line-color: #33c;
-}
-
-#merge[id='unioned'] {
-  line-color: #c33;
+#merge {
+  line-color: #ccc;
+  
+  [id='buffered'] {
+    line-color: #33c;
+  }
+  
+  [id='unioned'] {
+    line-color: #c33;
+  }
 }
 ```
 
-You should see something like this when you zoom in:
+You should then see something like this when you zoom in:
 
-![image](https://cloud.githubusercontent.com/assets/113896/6857016/0b657760-d3c1-11e4-95a1-70eba7a3bacb.png)
+![image](https://cloud.githubusercontent.com/assets/113896/6857076/83f9e5e4-d3c1-11e4-90aa-73c564368075.png)
+
+which shows that the gray lines (the original Shapefile geometries)
+have been merged into a single geometry (the red lines), and then
+buffered into the blue (which will vary depending on the radius given
+to `ST_Buffer()`).
 
 [PostGIS]: http://postgis.net/
 [PostgreSQL]: http://www.postgresql.org/
