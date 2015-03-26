@@ -69,6 +69,8 @@ to any of the projects, specifying:
 * `dbname=eiti-maps` as the connection string, and
 * `merge` as the table/query
 
+![image](https://cloud.githubusercontent.com/assets/113896/6857962/c4b33e40-d3c7-11e4-8b1c-fb9145766abd.png)
+
 Then add the following CartoCSS to your stylesheet:
 
 ```carto
