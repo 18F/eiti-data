@@ -1,30 +1,49 @@
 base_url = http://www.boem.gov/Oil-and-Gas-Energy-Program/Mapping-and-Data
+layers = alaska atlantic gulf pacific
 
-all: download unzip
+all: download reproject rezip
 
-download:
-	curl -L "$(base_url)/Alaska/planarea.aspx" > alaska.zip
-	curl -L "$(base_url)/ATL_PLAN(3).aspx" > atlantic.zip
-	curl -L "http://www.data.boem.gov/homepg/pubinfo/repcat/arcinfo/zipped/planarea.zip" > gulf.zip
-	curl -L "$(base_url)/Pacific-files/PC_PLANAREA.aspx" > pacific.zip
+.PHONY: download reproject rezip
 
-reproject: unzip
-	for shp in *.shp; do ogr2ogr -F "ESRI Shapefile" -t_srs EPSG:900913 $${shp/.shp/}-merc.shp $$shp; done
+download: \
+	shp/alaska.shp \
+	shp/atlantic.shp \
+	shp/gulf.shp \
+	shp/pacific.shp
 
-unzip:
-	unzip -u alaska.zip
-	for file in AK_PLAN.*; do mv $$file alaska.$${file##*.}; done
-	unzip -u atlantic.zip
-	for file in ATL_PLAN.*; do mv $$file atlantic.$${file##*.}; done
-	unzip -u gulf.zip
-	for file in planarea.*; do mv $$file gulf.$${file##*.}; done
-	unzip -u pacific.zip
-	for file in PC_PLANAREA.*; do mv $$file pacific.$${file##*.}; done
+shp/alaska.zip:
+	mkdir -p $(dir $@)
+	curl -L "$(base_url)/Alaska/planarea.aspx" > $@
 
-.PHONY: download unzip reproject
+shp/atlantic.zip:
+	mkdir -p $(dir $@)
+	curl -L "$(base_url)/ATL_PLAN(3).aspx" > $@
 
-clean:
-	rm -f *.shp *.shx *.dbf *.prj *.htm *.sbn *.sbx *.xml
+shp/gulf.zip:
+	mkdir -p $(dir $@)
+	curl -L "http://www.data.boem.gov/homepg/pubinfo/repcat/arcinfo/zipped/planarea.zip" > $@
+
+shp/pacific.zip:
+	mkdir -p $(dir $@)
+	curl -L "$(base_url)/Pacific-files/PC_PLANAREA.aspx" > $@
+
+shp/%.shp: shp/%.zip
+	unzip -d $(basename $@) $<
+	for file in $(basename $@)/*.???; do mv $$file $(basename $@).$${file##*.}; done
+	rmdir $(basename $@)
+
+reproject:
+	for shp in shp/*.shp; do ogr2ogr -f "ESRI Shapefile" -t_srs EPSG:900913 $${shp/.shp/}-merc.shp $$shp; done
+	for shp in shp/*-merc.*; do mv $$shp $${shp/-merc/}; done
+
+rezip:
+	rm -f shp/*.zip
+	for layer in $(layers); do zip shp/$$layer.zip shp/$$layer.*; done
+
+tidy:
+	rm -f shp/*.{shp,shx,dbf,prj,htm,sbn,sbx,xml}
+
+clean: tidy
 
 distclean: clean
-	rm -f *.zip
+	rm -f shp/*.zip
