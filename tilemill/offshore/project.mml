@@ -1,0 +1,110 @@
+{
+  "bounds": [
+    -179.6484,
+    15.9613,
+    -60.4688,
+    75.4089
+  ],
+  "center": [
+    -122.6953,
+    50.0642,
+    2
+  ],
+  "format": "png",
+  "interactivity": false,
+  "minzoom": 0,
+  "maxzoom": 22,
+  "srs": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over",
+  "Stylesheet": [
+    "style.mss"
+  ],
+  "Layer": [
+    {
+      "id": "countries",
+      "name": "countries",
+      "srs": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over",
+      "geometry": "polygon",
+      "Datasource": {
+        "file": "http://mapbox-geodata.s3.amazonaws.com/natural-earth-1.4.0/cultural/10m-admin-0-countries.zip",
+        "type": "shape"
+      }
+    },
+    {
+      "geometry": "polygon",
+      "extent": [
+        -180,
+        46.943006596377515,
+        -130.65110416292657,
+        74.99635387093463
+      ],
+      "id": "alaska",
+      "class": "offshore",
+      "Datasource": {
+        "file": "data/shp/alaska.zip"
+      },
+      "srs-name": "autodetect",
+      "srs": "",
+      "advanced": {},
+      "name": "alaska"
+    },
+    {
+      "geometry": "polygon",
+      "extent": [
+        -130.25163648899996,
+        30.107879495000077,
+        -117.18504769899997,
+        48.50589663400003
+      ],
+      "id": "pacific",
+      "class": "offshore",
+      "Datasource": {
+        "file": "data/shp/pacific.zip"
+      },
+      "srs-name": "autodetect",
+      "srs": "",
+      "advanced": {},
+      "name": "pacific"
+    },
+    {
+      "geometry": "polygon",
+      "extent": [
+        -82.99984411974117,
+        23.8179233998577,
+        -64.10832899343275,
+        44.76902265761962
+      ],
+      "id": "atlantic",
+      "class": "offshore",
+      "Datasource": {
+        "file": "data/shp/atlantic.zip"
+      },
+      "srs-name": "autodetect",
+      "srs": "",
+      "advanced": {},
+      "name": "atlantic"
+    },
+    {
+      "geometry": "polygon",
+      "extent": [
+        -97.2114713664099,
+        23.823221341489205,
+        -81.17010551029593,
+        30.246306051577314
+      ],
+      "id": "gulf",
+      "class": "offshore",
+      "Datasource": {
+        "file": "/Users/allens/work/eiti-maps/tilemill/offshore/data/shp/gulf.zip"
+      },
+      "srs-name": "autodetect",
+      "srs": "",
+      "advanced": {},
+      "name": "gulf"
+    }
+  ],
+  "scale": 1,
+  "metatile": 2,
+  "name": "EITI maps: Offshore areas",
+  "description": "",
+  "attribution": ""
+}
