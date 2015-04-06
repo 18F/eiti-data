@@ -1,3 +1,4 @@
-.sb?
-.htm
-.sh?
+*.sb?
+*.htm
+*.sh?
+*.xml
