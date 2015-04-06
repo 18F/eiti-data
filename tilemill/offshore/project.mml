@@ -63,7 +63,8 @@
       "srs-name": "autodetect",
       "srs": "",
       "advanced": {},
-      "name": "pacific"
+      "name": "pacific",
+      "status": "off"
     },
     {
       "geometry": "polygon",
@@ -81,7 +82,8 @@
       "srs-name": "autodetect",
       "srs": "",
       "advanced": {},
-      "name": "atlantic"
+      "name": "atlantic",
+      "status": "off"
     },
     {
       "geometry": "polygon",

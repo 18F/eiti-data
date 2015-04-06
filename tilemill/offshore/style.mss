@@ -19,6 +19,9 @@ Map {
   
   ::label {
     text-name: [MMS_PLAN_A];
+    [TEXT_LABEL!=''] {
+      text-name: [MMS_PLAN_A] + ' ' + [TEXT_LABEL];
+    }
     text-face-name: 'DejaVu Sans Mono Book', Helvetica;
     text-fill: #333;
     text-line-spacing: 2;
