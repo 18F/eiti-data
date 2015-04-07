@@ -41,7 +41,7 @@ g.counties path.mesh {
 }
 
 path.empty {
-  fill: #f9f9f9;
+  fill: #fff;
 }
 
 #map {
@@ -134,7 +134,7 @@ path.empty {
   margin-left: 60%;
   margin-bottom: .3em;
   /* wide enough to accommodate the numeric value */
-  margin-right: 17%;
+  margin-right: 14%;
   font-size: 85%;
 }
 
@@ -143,6 +143,7 @@ path.empty {
   left: 0;
   width: 60%;
   text-overflow: ellipsis;
+  z-index: 100;
 }
 
 .bars .mark .bar {
@@ -150,6 +151,7 @@ path.empty {
   display: inline-block;
   vertical-align: bottom;
   height: 1.2em;
+  z-index: 0;
 }
 
 .bars .mark .bar:before {
@@ -161,6 +163,7 @@ path.empty {
   bottom: -.2em;
   width: 1px;
   background: #ccc;
+  z-index: -100;
 }
 
 .bars .mark .bar.negative:before {
@@ -174,3 +177,6 @@ path.empty {
   margin-left: .5em;
 }
 
+.bars .mark .bar.negative .value {
+  font-style: italic;
+}
