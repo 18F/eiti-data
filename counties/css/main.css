@@ -1,0 +1,51 @@
+@import url(http://fonts.googleapis.com/css?family=Lato:400,700,900);
+
+body {
+  font-family: 'Lato', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  padding: 2em;
+  margin: 0;
+}
+
+svg path {
+  stroke: none;
+}
+
+path.mesh {
+  fill: none;
+  stroke: #999;
+  vector-effect: non-scaling-stroke;
+}
+
+g.counties path.mesh {
+  stroke: #ddd;
+}
+
+path.empty {
+  fill: #f9f9f9;
+}
+
+.legend .title {
+  font-size: inherit;
+  font-weight: bold;
+  margin: 0 0 0.5em 0;
+}
+
+  .legend .item .color {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: baseline;
+    margin-right: .5em;
+  }
+
+#map {
+  position: relative;
+  margin-left: 12em;
+}
+
+#map .legend {
+  position: absolute;
+  top: 0;
+  right: 100%;
+  width: 12em;
+}
