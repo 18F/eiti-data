@@ -1,12 +1,16 @@
 (function(exports) {
 
+  // things to render data into
   var map = d3.select('#map');
   var symbols = d3.select('svg#symbols');
+  var status = d3.select('#status');
 
+  // map projection and svg path generator
   var proj = d3.geo.albersUsa();
   var path = d3.geo.path()
     .projection(proj);
 
+  // app-wide data
   var data = {
     years: d3.set(),
     commodities: d3.set(),
@@ -14,23 +18,17 @@
     revenues: {}
   };
 
+  // US territories to ignore
   var TERRITORIES = d3.set(['PR', 'GU', 'VI']);
 
+  // initial app state
   var state = {
     breaks: 7,
     colors: 'RdPu',
     commodity: 'Oil & Gas'
   };
 
-  var truth = d3.functor(true);
-
-  d3.select('select[name="breaks"]')
-    .selectAll('option')
-      .data([3, 4, 5, 7, 9])
-      .enter()
-      .append('option')
-        .text(function(d) { return d; });
-
+  // colorbrewer color schemes -> <select>
   d3.select('select[name="colors"]')
     .selectAll('option')
       .data(Object.keys(colorbrewer)
@@ -45,27 +43,44 @@
           return k;
         });
 
+  // colorbrewer color schemes breaks -> <select>
+  d3.select('select[name="breaks"]')
+    .selectAll('option')
+      .data([3, 4, 5, 7, 9])
+      .enter()
+      .append('option')
+        .text(identity);
+
+  // save state in the form
   var form = new formdb.Form('#controls')
     .setData(state);
 
+  status.text('Loading...');
+
+  // load everything!
   queue()
     .defer(d3.json, 'data/geo/us-counties.json')
     .defer(d3.tsv, 'data/county-revenues.tsv')
     .await(function onload(error, topology, revenues) {
+      status.text('Loaded, prepping data...');
 
+      // parse the revenue numbers and add unique values
+      // to the year and commodity sets
       revenues.forEach(parseRevenue);
 
+      // stash these for use later
       data.geo.topology = topology;
       data.geo.counties = meshify(topology, 'counties');
 
+      // save this, too, so we can look at it in the console
       data.revenues = revenues;
 
+      // group counties by state
       var countiesByState = d3.nest()
         .key(function(d) { return d.properties.state; })
         .entries(topology.objects.counties.geometries);
 
-      data.countiesByState = countiesByState;
-
+      // generate TopoJSON arcs for each state
       var stateArcs = countiesByState
         .filter(function(d) {
           return !TERRITORIES.has(d.key);
@@ -80,6 +95,8 @@
           return geom;
         });
 
+      // add states into the topology
+      // (since they reference the same arcs)
       topology.objects.states = {
         type: 'GeometryCollection',
         geometries: stateArcs
@@ -87,6 +104,7 @@
 
       data.geo.states = meshify(topology, 'states');
 
+      // the index: year -> commodity -> FIPS
       data.index = d3.nest()
         .key(getter('CY'))
         .key(getter('Commodity'))
@@ -94,6 +112,7 @@
         .map(revenues);
 
       /*
+      // XXX uncomment this to list all commodities
       var commodities = data.commodities = data.commodities.values()
         .sort(d3.ascending)
 
@@ -102,19 +121,23 @@
         .data(commodities)
         .enter()
         .append('option')
-          .attr('value', function(d) { return d; })
+          .attr('value', identity)
           .text(function(d) { return d ? d : 'All'; });
       */
 
+      // get the set of unique years
       var years = data.years = data.years.values()
         .sort(d3.ascending);
 
+      // and set that as the range on the year input
       d3.select('input[name="year"]')
         .attr('min', years[0])
         .attr('max', years[years.length - 1]);
 
+      // default to the first year
       state.year = years[0];
 
+      // apply the initial state to the form
       form.setData(state);
 
       var update = function() {
@@ -125,11 +148,26 @@
 
       form.on('change', update);
 
+      status.text('Creating maps...');
+
+      // create the document structure
       createMap();
       createStateMaps();
+
+      // update the data
       update();
+
+      // remove the status message
+      status.text('').remove();
+      location.hash = location.hash;
     });
 
+  /*
+   * collect the GeoJSON features and generate a mesh for a given
+   * key in the provided topology, e.g.:
+   *
+   * var states = meshify(topology, 'states');
+   */
   function meshify(topology, key) {
     var object = topology.objects[key];
     var features = topojson.feature(topology, object).features;
@@ -140,27 +178,56 @@
     };
   }
 
+  /*
+   * initialize the big map
+   */
   function createMap() {
     var svg = map.append('svg')
       .attr('class', 'map');
 
     var counties = svg.append('g')
-      .attr('class', 'areas counties')
-      .call(renderAreas, data.geo.counties);
+      .attr('class', 'areas counties');
+
+    counties.selectAll('path.area')
+      .data(data.geo.counties.features)
+      .enter()
+      .append('path')
+        .attr('class', 'area county')
+        .attr('d', path);
+
+    counties.append('path')
+      .attr('class', 'mesh')
+      .datum(data.geo.counties.mesh)
+      .attr('d', path);
 
     var states = svg.append('g')
-      .attr('class', 'areas states')
-      .call(renderAreas, data.geo.states);
+      .attr('class', 'areas states');
+
+    states.selectAll('a')
+      .data(data.geo.states.features)
+      .enter()
+      .append('a')
+        .attr('xlink:href', function(d) {
+          return '#' + d.id;
+        })
+        .append('path')
+          .attr('class', 'area state')
+          .attr('d', path)
+          .attr('fill', 'transparent');
+
+    states.append('path')
+      .attr('class', 'mesh')
+      .datum(data.geo.states.mesh)
+      .attr('d', path);
 
     states.selectAll('path.area')
-      .attr('fill', 'none');
 
     var bbox = states.node().getBBox();
     svg.attr('viewBox', [bbox.x, bbox.y, bbox.width, bbox.height].join(' '));
 
     var areas = map.selectAll('g.counties path.area')
       .attr('id', function(d) {
-        return d.FIPS;
+        return d.properties.FIPS;
       });
 
     areas.append('title')
@@ -170,6 +237,9 @@
       });
   }
 
+  /*
+   * initialize the state maps
+   */
   function createStateMaps() {
     var root = d3.select('#states');
     var states = data.geo.states.features
@@ -204,7 +274,11 @@
       .enter()
       .append('path')
         .attr('class', 'area')
-        .attr('d', path);
+        .attr('d', path)
+        .append('title')
+          .text(function(d) {
+            return d.title;
+          });
 
     svg.append('g')
       .attr('class', 'mesh counties')
@@ -230,19 +304,24 @@
       .attr('d', path)
       .attr('stroke-width', 2);
 
-    var margin = 10;
-    var outerSize = 600;
+    // see: <http://bl.ocks.org/shawnbot/9240915>
+    var margin = 20;
     svg.attr('viewBox', function(d) {
       var bounds = path.bounds(d);
       var x = bounds[0][0];
       var y = bounds[0][1];
       var w = bounds[1][0] - x;
       var h = bounds[1][1] - y;
-      var m = Math.max(w, h) / outerSize * margin;
-      return [x - m, y - m, w + m, h + m].join(' ');
+      var bbox = this.getBoundingClientRect();
+      var scale = Math.max(w, h) / Math.min(bbox.width, bbox.height);
+      var m = margin * scale;
+      return [x - m, y - m, w + m * 2, h + m * 2].join(' ');
     });
   }
 
+  /*
+   * update the overview map
+   */
   function updateOverviewMap() {
     // console.log('state:', state);
     d3.select('#year-display').text(state.year);
@@ -358,31 +437,18 @@
     }
   }
 
+  /*
+   * update the state maps
+   */
   function updateStateMaps() {
+    // XXX
   }
 
-  function renderAreas(selection, geo) {
-    selection.datum(geo);
-
-    if (geo.features) {
-      var area = selection.selectAll('path.area')
-        .data(geo.features)
-        .enter()
-        .append('path')
-          .attr('class', 'area')
-          .attr('d', path);
-    } else {
-      console.log('no features');
-    }
-
-    if (geo.mesh) {
-      selection.append('path')
-        .attr('class', 'mesh')
-        .datum(geo.mesh)
-        .attr('d', path);
-    }
-  }
-
+  /*
+   * parse a single row of the revenue dataset by converting its revenue
+   * column into a number and adding its commodity and year values to the
+   * respective unique sets.
+   */
   function parseRevenue(d) {
     data.commodities.add(d.Commodity);
     data.years.add(d.CY);
@@ -390,6 +456,12 @@
     return d;
   }
 
+  /*
+   * parse dollar amount strings into numbers:
+   *
+   * parseDollars(' $ 50.0 ') === 50
+   * parseDollars(' $ (100.0) ') === -100
+   */
   function parseDollars(str) {
     str = str.trim();
     if (str.substr(0, 2) === '$ ') str = str.substr(2);
@@ -402,26 +474,10 @@
     return negative ? -num : num;
   }
 
+  // format a number back into its dollar form
   var formatDecimal = d3.format(',.2f');
   function formatDollars(num) {
     return '$' + formatDecimal(num);
-  }
-
-  function makeFilter(filters) {
-    var len = filters.length;
-    return function(d) {
-      for (var i = 0; i < len; i++) {
-        if (!filters[i].call(this, d)) return false;
-      }
-      return true;
-    };
-  }
-
-  function eq(value, key) {
-    var accessor = getter(key);
-    return function(d) {
-      return accessor(d) == value;
-    };
   }
 
   function getter(key) {
