@@ -168,7 +168,7 @@
     }
 
     var filter = filters.length
-      ? function(d) { return filters.every(function(f) { return f(d); }); }
+      ? makeFilter(filters)
       : d3.functor(true);
 
     var areas = map.selectAll('g.counties path.area')
@@ -271,6 +271,16 @@
   var formatDecimal = d3.format(',.2f');
   function formatDollars(num) {
     return '$' + formatDecimal(num);
+  }
+
+  function makeFilter(filters) {
+    var len = filters.length;
+    return function(d) {
+      for (var i = 0; i < len; i++) {
+        if (!filters[i].call(this, d)) return false;
+      }
+      return true;
+    };
   }
 
   function eq(field, value) {
