@@ -1,0 +1,126 @@
+/* @import url(http://fonts.googleapis.com/css?family=Lato:400,700,900); */
+
+body {
+  font-family: 'Lato', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  padding: 2em;
+  margin: 0;
+}
+
+h1 {
+  font-size: 2em;
+  margin: 0 0 .5em 0;
+}
+
+h2 {
+  font-size: 1.5em;
+  margin: 0 0 .5em 0;
+}
+
+h3 {
+  font-size: 1.25em;
+  margin: 0;
+}
+
+.note {
+  color: #999;
+}
+
+svg path {
+  stroke: none;
+  vector-effect: non-scaling-stroke;
+}
+
+path.mesh {
+  fill: none;
+  stroke: #999;
+  stroke-width: .5;
+}
+
+g.counties path.mesh {
+  stroke: #ddd;
+}
+
+path.empty {
+  fill: #f9f9f9;
+}
+
+#map {
+  margin-bottom: 2em;
+}
+
+#map a:hover .state {
+  stroke: #333;
+}
+
+.legend .title {
+  font-size: inherit;
+  font-weight: bold;
+  margin: 0 0 0.5em 0;
+}
+
+  .legend .item .color {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: baseline;
+    margin-right: .5em;
+  }
+
+#map {
+  position: relative;
+  margin-left: 12em;
+}
+
+#map .legend {
+  position: absolute;
+  top: 0;
+  right: 100%;
+  width: 12em;
+}
+
+#states:after {
+  clear: both;
+  display: table;
+  content: " ";
+}
+
+#states .state {
+  float: left;
+  margin: 0 20px 20px 0;
+  position: relative;
+}
+
+#states .state h3 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #fff;
+  padding: 0 .4em .2em 0;
+  margin: 0;
+  border: 1px solid #ccc;
+  border-width: 0 1px 1px 0;
+  border-bottom-right-radius: .5em;
+}
+
+#states .state .map {
+  width: 300px;
+  height: 300px;
+  border: 1px solid #ddd;
+}
+
+#states .state#AK .map {
+  width: 500px;
+}
+
+.state .map path.mask {
+  stroke: #ccc;
+  stroke-width: .5;
+  fill: #fff;
+  fill-opacity: .66;
+}
+
+.state .map path.outline {
+  fill: none;
+  stroke: #333;
+  stroke-width: 1;
+}

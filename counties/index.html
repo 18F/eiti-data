@@ -1,0 +1,56 @@
+---
+permalink: /counties/
+---
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>US EITI: Counties</title>
+    <meta charset="utf-8">
+    <script src="js/vendor/d3.v3.min.js"></script>
+    <script src="js/vendor/topojson.v1.min.js"></script>
+    <script src="js/vendor/queue.v1.min.js"></script>
+    <script src="js/vendor/colorbrewer.v1.min.js"></script>
+    <script src="js/vendor/formdb.min.js"></script>
+    <link rel="stylesheet" href="css/main.css">
+  </head>
+  <body>
+
+    <h1>USEITI Maps: County Commodities Over Time</h1>
+    <p id="status"></p>
+
+    <form id="controls">
+      <p>
+        <label>Commodity: <select name="commodity">
+          <option>Gas</option>
+          <option>Oil</option>
+          <option>Oil &amp; Gas</option>
+        </select></label>
+        <span class="note">Note: unlisted commodities lack data.</span>
+      </p>
+      <p>
+        <label>Year: <input type="range" name="year" value="2004" min="2004" max="2013" step="1"></label>
+        <b id="year-display"></b>
+      </p>
+      <p>
+        <label>Color scheme: <select name="colors"></select></label>
+        with
+        <label><select name="breaks"></select> breaks</label>
+      </p>
+    </form>
+
+    <div id="map">
+      <div class="legend">
+        <h6 class="title">Legend</h6>
+        <p class="message"></p>
+      </div>
+    </div>
+
+    <div id="states">
+    </div>
+
+    <svg id="symbols">
+    </svg>
+
+    <script src="index.js"></script>
+  </body>
+</html>
