@@ -14,22 +14,28 @@
 
     <form id="controls">
       <p>
+        <label>Commodity: <select name="commodity">
+          <option>Gas</option>
+          <option>Oil</option>
+          <option>Oil &amp; Gas</option>
+        </select></label>
+        <span class="note">Note: unlisted commodities lack data.</span>
+      </p>
+      <p>
+        <label>Year: <input type="range" name="year" value="2004" min="2004" max="2013" step="1"></label>
+        <b id="year-display"></b>
+      </p>
+      <p>
         <label>Color scheme: <select name="colors"></select></label>
         with
         <label><select name="breaks"></select> breaks</label>
-      </p>
-      <p>
-        <label>Commodity: <select name="commodity"></select></label>
-      </p>
-      <p>
-        <label>Year: <input type="range" name="year" step="1"></label>
-        <b id="year-display"></b>
       </p>
     </form>
 
     <div id="map">
       <div class="legend">
         <h6 class="title">Legend</h6>
+        <p class="message"></p>
       </div>
     </div>
 

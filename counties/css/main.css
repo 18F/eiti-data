@@ -6,6 +6,10 @@ body {
   margin: 0;
 }
 
+.note {
+  color: #999;
+}
+
 svg path {
   stroke: none;
 }

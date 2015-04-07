@@ -7,15 +7,21 @@
   var map = d3.select('#map');
 
   var data = {
-    geo: {
-    },
-    revenues: {
-    }
+    years: d3.set(),
+    commodities: d3.set(),
+    geo: {},
+    revenues: {}
   };
 
   var SKIP_FIPS = d3.set([78]);
 
-  var form = new formdb.Form('#controls');
+  var state = {
+    breaks: 7,
+    colors: 'RdPu',
+    commodity: 'Oil & Gas'
+  };
+
+  var truth = d3.functor(true);
 
   d3.select('select[name="breaks"]')
     .selectAll('option')
@@ -38,20 +44,20 @@
           return k;
         });
 
-  var state = {
-    breaks: 7,
-    colors: 'RdPu'
-  };
+  var form = new formdb.Form('#controls')
+    .setData(state);
 
   queue()
     .defer(d3.json, 'data/geo/us-counties.json')
     .defer(d3.tsv, 'data/county-revenues.tsv')
     .await(function onload(error, topology, revenues) {
 
+      revenues.forEach(parseRevenue);
+
       data.geo.topology = topology;
       data.geo.counties = meshify(topology, 'counties');
 
-      data.revenues.counties = revenues;
+      data.revenues = revenues;
 
       var countiesByState = d3.nest()
         .key(function(d) { return d.properties.state; })
@@ -74,10 +80,15 @@
 
       data.geo.states = meshify(topology, 'states');
 
-      var commodities = uniq(revenues, 'Commodity')
-        .sort(d3.ascending);
+      data.index = d3.nest()
+        .key(getter('CY'))
+        .key(getter('Commodity'))
+        .key(getter('County Code'))
+        .map(revenues);
 
-      commodities.unshift('');
+      /*
+      var commodities = data.commodities = data.commodities.values()
+        .sort(d3.ascending)
 
       d3.select('select[name="commodity"]')
         .selectAll('option')
@@ -86,20 +97,24 @@
         .append('option')
           .attr('value', function(d) { return d; })
           .text(function(d) { return d ? d : 'All'; });
+      */
 
-      var years = uniq(revenues, 'CY')
+      var years = data.years = data.years.values()
         .sort(d3.ascending);
 
       d3.select('input[name="year"]')
         .attr('min', years[0])
-        .attr('max', years[years.length - 1])
-        .attr('value', years[0]);
+        .attr('max', years[years.length - 1]);
+
+      state.year = years[0];
 
       form.setData(state);
-      form.on('change', function(d) {
-        state = d;
+
+      var update = function() {
+        state = form.getData();
         updateState();
-      });
+      };
+      form.on('change', update);
 
       createMap();
       updateState();
@@ -133,21 +148,9 @@
     var bbox = states.node().getBBox();
     svg.attr('viewBox', [bbox.x, bbox.y, bbox.width, bbox.height].join(' '));
 
-    var rowsByCounty = d3.nest()
-      .key(function(d) { return d['County Code']; })
-      .map(data.revenues.counties);
-
     var areas = map.selectAll('g.counties path.area')
       .attr('id', function(d) {
         return d.FIPS;
-      })
-      .each(function(d) {
-        var fips = d.id;
-        var rows = rowsByCounty[fips] || [];
-        d.data = rows.map(function(row) {
-          row.revenue = parseDollars(row['Royalty/Revenue']);
-          return row;
-        });
       });
 
     areas.append('title')
@@ -158,23 +161,18 @@
   }
 
   function updateState() {
-    var filters = [];
-    if (state.year) {
-      d3.select('#year-display').text(state.year);
-      filters.push(eq('CY', state.year));
-    }
-    if (state.commodity) {
-      filters.push(eq('Commodity', state.commodity));
-    }
-
-    var filter = filters.length
-      ? makeFilter(filters)
-      : d3.functor(true);
+    // console.log('state:', state);
+    d3.select('#year-display').text(state.year);
+    var index = data.index[state.year][state.commodity];
+    var valid = !!index;
+    var message;
+    if (!index) index = {};
 
     var areas = map.selectAll('g.counties path.area')
       .classed('empty', true)
+      .classed('full', false)
       .filter(function(d) {
-        d.rows = d.data.filter(filter);
+        d.rows = index[d.id] || [];
         return d.rows.length;
       })
       .each(function(d) {
@@ -182,56 +180,88 @@
           return row.revenue;
         });
       })
-      .classed('empty', false);
+      .classed('empty', false)
+      .classed('full', true);
 
-    var sums = areas
-      .data()
-      .map(function(d) { return d.sum; });
-
-    var colors = colorbrewer[state.colors][state.breaks];
-
-    var extent = d3.extent(sums);
-    if (extent[0] > 0) extent[0] = 0;
-    var scale = d3.scale.quantize()
-      .domain(extent)
-      .range(colors);
-
-    areas.attr('fill', function(d) {
-      return scale(d.sum);
-    });
+    var validData = areas.data();
+    var zeroSum = function(d) { return d.sum === 0; };
+    if (validData.length < 2) {
+      console.warn('not enough data:', validData);
+      valid = false;
+      message = 'not enough data';
+    } else if (validData.every(zeroSum)) {
+      console.warn('all zeroes:', validData);
+      valid = false;
+      message = 'all zeroes';
+    }
 
     var legend = map.select('.legend');
-    var steps = colors.map(function(color) {
-      var domain = scale.invertExtent(color);
-      return {
-        color: color,
-        min: domain[0],
-        max: domain[1]
-      };
-    });
+    if (valid) {
 
-    var item = legend.selectAll('.item')
-      .data(steps);
-    item.exit().remove();
+      var colors = colorbrewer[state.colors][state.breaks];
+      var sums = validData.map(function(d) { return d.sum; });
 
-    var enter = item.enter().append('div')
-      .attr('class', 'item');
-    enter.append('span')
-      .attr('class', 'color');
-    enter.append('span')
-      .attr('class', 'min');
-    enter.append('span')
-      .attr('class', 'sep')
-      .html('&mdash;');
-    enter.append('span')
-      .attr('class', 'max');
+      var extent = d3.extent(sums);
+      if (extent[0] > 0) extent[0] = 0;
+      var scale = d3.scale.quantize()
+        .domain(extent)
+        .range(colors);
 
-    item.select('.color')
-      .style('background', function(d) { return d.color; });
-    item.select('.min')
-      .text(function(d) { return formatDollars(d.min); });
-    item.select('.max')
-      .text(function(d) { return formatDollars(d.max); });
+      areas.attr('fill', function(d) {
+        return scale(d.sum);
+      });
+
+      var steps = colors.map(function(color) {
+        var domain = scale.invertExtent(color);
+        return {
+          color: color,
+          min: domain[0],
+          max: domain[1]
+        };
+      });
+
+      var item = legend.selectAll('.item')
+        .data(steps);
+      item.exit().remove();
+
+      var enter = item.enter().append('div')
+        .attr('class', 'item');
+      enter.append('span')
+        .attr('class', 'color');
+      enter.append('span')
+        .attr('class', 'min');
+      enter.append('span')
+        .attr('class', 'sep')
+        .html(' &ndash; ');
+      enter.append('span')
+        .attr('class', 'max');
+
+      item.select('.color')
+        .style('background', function(d) { return d.color; });
+      item.select('.min')
+        .text(function(d) { return formatDollars(d.min); });
+      item.select('.max')
+        .text(function(d) { return formatDollars(d.max); });
+
+      legend.select('.message')
+        .style('display', 'none')
+        .text('');
+
+    } else {
+
+      areas
+        .classed('full', false)
+        .classed('empty', true);
+
+      legend.selectAll('.item')
+        .remove();
+
+      var text = 'No data for "' + state.commodity + '" in ' + state.year;
+      if (message) text += ' (' + message + ')';
+      legend.select('.message')
+        .style('display', null)
+        .text(text + '.');
+    }
   }
 
   function renderAreas(selection, geo) {
@@ -254,6 +284,13 @@
         .datum(geo.mesh)
         .attr('d', path);
     }
+  }
+
+  function parseRevenue(d) {
+    data.commodities.add(d.Commodity);
+    data.years.add(d.CY);
+    d.revenue = parseDollars(d['Royalty/Revenue']);
+    return d;
   }
 
   function parseDollars(str) {
@@ -283,8 +320,8 @@
     };
   }
 
-  function eq(field, value) {
-    var accessor = getter(field);
+  function eq(value, key) {
+    var accessor = getter(key);
     return function(d) {
       return accessor(d) == value;
     };
@@ -293,12 +330,14 @@
   function getter(key) {
     return typeof key === 'function'
       ? key
-      : function(d) { return d[key]; };
+      : key
+        ? function(d) { return d[key]; }
+        : identity;
   }
 
   function uniq(values, key) {
     var set = d3.set();
-    var accessor = key ? getter(key) : identity;
+    var accessor = getter(key);
     values.forEach(function(d) {
       set.add(accessor(d));
     });
