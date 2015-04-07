@@ -74,10 +74,7 @@
 
       data.geo.states = meshify(topology, 'states');
 
-      var commodities = d3.nest()
-        .key(function(d) { return d.Commodity; })
-        .entries(data.revenues.counties)
-        .map(function(d) { return d.key; })
+      var commodities = uniq(revenues, 'Commodity')
         .sort(d3.ascending);
 
       commodities.unshift('');
@@ -89,6 +86,14 @@
         .append('option')
           .attr('value', function(d) { return d; })
           .text(function(d) { return d ? d : 'All'; });
+
+      var years = uniq(revenues, 'CY')
+        .sort(d3.ascending);
+
+      d3.select('input[name="year"]')
+        .attr('min', years[0])
+        .attr('max', years[years.length - 1])
+        .attr('value', years[0]);
 
       form.setData(state);
       form.on('change', function(d) {
@@ -154,10 +159,12 @@
 
   function updateState() {
     var filters = [];
+    if (state.year) {
+      d3.select('#year-display').text(state.year);
+      filters.push(eq('CY', state.year));
+    }
     if (state.commodity) {
-      filters.push(function(row) {
-        return row.Commodity === state.commodity;
-      });
+      filters.push(eq('Commodity', state.commodity));
     }
 
     var filter = filters.length
@@ -264,6 +271,32 @@
   var formatDecimal = d3.format(',.2f');
   function formatDollars(num) {
     return '$' + formatDecimal(num);
+  }
+
+  function eq(field, value) {
+    var accessor = getter(field);
+    return function(d) {
+      return accessor(d) == value;
+    };
+  }
+
+  function getter(key) {
+    return typeof key === 'function'
+      ? key
+      : function(d) { return d[key]; };
+  }
+
+  function uniq(values, key) {
+    var set = d3.set();
+    var accessor = key ? getter(key) : identity;
+    values.forEach(function(d) {
+      set.add(accessor(d));
+    });
+    return set.values();
+  }
+
+  function identity(d) {
+    return d;
   }
 
   exports.parseDollars = parseDollars;
