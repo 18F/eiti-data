@@ -24,8 +24,8 @@
 
   // initial app state
   var state = {
-    breaks: 7,
-    colors: 'RdPu',
+    breaks: 11,
+    colors: 'BrBG',
     commodity: 'Oil & Gas'
   };
 
@@ -47,7 +47,7 @@
   // colorbrewer color schemes breaks -> <select>
   d3.select('select[name="breaks"]')
     .selectAll('option')
-      .data([3, 4, 5, 7, 9])
+      .data([3, 4, 5, 7, 9, 11])
       .enter()
       .append('option')
         .text(identity);
@@ -60,7 +60,7 @@
 
   // load everything!
   queue()
-    .defer(d3.json, 'data/geo/us-counties-small.json')
+    .defer(d3.json, 'data/geo/us-counties.json')
     .defer(d3.tsv, 'data/county-revenues.tsv')
     .await(function onload(error, topology, revenues) {
       status.text('Loaded, prepping data...');
@@ -399,12 +399,22 @@
     var legend = map.select('.legend');
     if (valid) {
 
-      var colors = colorbrewer[state.colors][state.breaks];
+      var colors = colorbrewer[state.colors];
+      // max breaks for some schemes
+      colors = colors[state.breaks] || colors[9];
       var sums = validData.map(function(d) { return d.sum; });
 
       var extent = d3.extent(sums);
-      if (extent[0] > 0) extent[0] = 0;
-      var scale = d3.scale.quantize()
+      var min = extent[0];
+      var max = extent[1];
+      if (min < 0) {
+        min = extent[0] = Math.min(min, -max);
+        max = extent[1] = Math.max(max, -min);
+      } else {
+        min = extent[0] = -max;
+      }
+      extent.splice(1, 0, 0);
+      var scale = d3.scale.quantile()
         .domain(extent)
         .range(colors);
 
@@ -442,8 +452,8 @@
         });
 
       var width = d3.scale.linear()
-        .domain([0, extent[1]])
-        .range([0, 100]);
+        .domain(extent)
+        .range([-100, 0, 100]);
       marks.select('.bar')
         .style('background', fill)
         .style('width', function(d) {
@@ -451,10 +461,10 @@
           return Math.abs(d._width) + '%';
         })
         .classed('negative', function(d) {
-          return d._width < 0;
+          return d.sum < 0;
         })
         .style('margin-left', function(d) {
-          return d._width < 0 ? (d._width + '%') : 0;
+          return d.sum < 0 ? (d._width + '%') : 0;
         });
 
       var steps = colors
