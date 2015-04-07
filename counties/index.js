@@ -159,7 +159,6 @@
 
       // remove the status message
       status.text('').remove();
-      location.hash = location.hash;
     });
 
   /*
@@ -222,8 +221,15 @@
 
     states.selectAll('path.area')
 
-    var bbox = states.node().getBBox();
-    svg.attr('viewBox', [bbox.x, bbox.y, bbox.width, bbox.height].join(' '));
+    var width = 900;
+    var height = 510;
+    var margin = 0;
+    svg.attr('viewBox', [
+      -margin,
+      -margin,
+      width + margin,
+      height + margin
+    ].join(' '));
 
     var areas = map.selectAll('g.counties path.area')
       .attr('id', function(d) {
@@ -254,7 +260,7 @@
         .attr('class', 'state')
         .attr('id', function(d) { return d.id; });
 
-    div.append('h2')
+    div.append('h3')
       .text(function(d) { return d.id; });
 
     var svg = div.append('svg')
