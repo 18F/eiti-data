@@ -59,7 +59,7 @@
 
   // load everything!
   queue()
-    .defer(d3.json, 'data/geo/us-counties.json')
+    .defer(d3.json, 'data/geo/us-counties-small.json')
     .defer(d3.tsv, 'data/county-revenues.tsv')
     .await(function onload(error, topology, revenues) {
       status.text('Loaded, prepping data...');
@@ -469,15 +469,9 @@
    * parseDollars(' $ (100.0) ') === -100
    */
   function parseDollars(str) {
-    str = str.trim();
-    if (str.substr(0, 2) === '$ ') str = str.substr(2);
-    var negative = false;
-    if (str.charAt(0) === '(') {
-      negative = true;
-      str = str.substr(1, str.length - 2);
-    }
-    var num = +str;
-    return negative ? -num : num;
+    return +str.trim()
+      .replace(/^\$\s*/, '')
+      .replace(/\((.+)\)/, '-$1');
   }
 
   // format a number back into its dollar form
@@ -494,20 +488,9 @@
         : identity;
   }
 
-  function uniq(values, key) {
-    var set = d3.set();
-    var accessor = getter(key);
-    values.forEach(function(d) {
-      set.add(accessor(d));
-    });
-    return set.values();
-  }
-
   function identity(d) {
     return d;
   }
-
-  exports.parseDollars = parseDollars;
 
   exports.data = data;
 
