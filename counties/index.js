@@ -1,10 +1,11 @@
 (function(exports) {
 
+  var map = d3.select('#map');
+  var symbols = d3.select('svg#symbols');
+
   var proj = d3.geo.albersUsa();
   var path = d3.geo.path()
     .projection(proj);
-
-  var map = d3.select('#map');
 
   var data = {
     years: d3.set(),
@@ -13,7 +14,7 @@
     revenues: {}
   };
 
-  var SKIP_FIPS = d3.set([78]);
+  var TERRITORIES = d3.set(['PR', 'GU', 'VI']);
 
   var state = {
     breaks: 7,
@@ -63,14 +64,20 @@
         .key(function(d) { return d.properties.state; })
         .entries(topology.objects.counties.geometries);
 
+      data.countiesByState = countiesByState;
+
       var stateArcs = countiesByState
         .filter(function(d) {
-          return !SKIP_FIPS.has(d.key);
+          return !TERRITORIES.has(d.key);
         })
         .map(function(d) {
           var state = d.key;
-          var geoms = d.values;
-          return topojson.mergeArcs(topology, geoms);
+          var geom = topojson.mergeArcs(topology, d.values);
+          geom.id = d.key;
+          geom.properties = {
+            state: d.key
+          };
+          return geom;
         });
 
       topology.objects.states = {
@@ -112,12 +119,15 @@
 
       var update = function() {
         state = form.getData();
-        updateState();
+        updateOverviewMap();
+        updateStateMaps();
       };
+
       form.on('change', update);
 
       createMap();
-      updateState();
+      createStateMaps();
+      update();
     });
 
   function meshify(topology, key) {
@@ -160,7 +170,80 @@
       });
   }
 
-  function updateState() {
+  function createStateMaps() {
+    var root = d3.select('#states');
+    var states = data.geo.states.features
+      .sort(function(a, b) {
+        return d3.ascending(a.id, b.id);
+      });
+
+    var div = root.selectAll('div.state')
+      .data(states)
+      .enter()
+      .append('div')
+        .attr('class', 'state')
+        .attr('id', function(d) { return d.id; });
+
+    div.append('h2')
+      .text(function(d) { return d.id; });
+
+    var svg = div.append('svg')
+      .attr('class', 'map');
+
+    var countiesByState = d3.nest()
+      .key(function(d) { return d.properties.state; })
+      .map(data.geo.counties.features);
+
+    svg.append('g')
+      .attr('class', 'areas counties')
+      .selectAll('path.area')
+      .data(function(d) {
+        // XXX DC doesn't have counties
+        return countiesByState[d.properties.state] || [];
+      })
+      .enter()
+      .append('path')
+        .attr('class', 'area')
+        .attr('d', path);
+
+    svg.append('g')
+      .attr('class', 'mesh counties')
+      .append('path')
+        .attr('class', 'mesh')
+        .attr('d', path(data.geo.counties.mesh));
+
+    svg.append('g')
+      .attr('class', 'mask states')
+      .selectAll('path.area')
+      .data(function(d) {
+        return states.filter(function(s) {
+          return s !== d;
+        });
+      })
+      .enter()
+      .append('path')
+        .attr('class', 'area mask')
+        .attr('d', path);
+
+    var mask = svg.append('path')
+      .attr('class', 'area outline')
+      .attr('d', path)
+      .attr('stroke-width', 2);
+
+    var margin = 10;
+    var outerSize = 600;
+    svg.attr('viewBox', function(d) {
+      var bounds = path.bounds(d);
+      var x = bounds[0][0];
+      var y = bounds[0][1];
+      var w = bounds[1][0] - x;
+      var h = bounds[1][1] - y;
+      var m = Math.max(w, h) / outerSize * margin;
+      return [x - m, y - m, w + m, h + m].join(' ');
+    });
+  }
+
+  function updateOverviewMap() {
     // console.log('state:', state);
     d3.select('#year-display').text(state.year);
     var index = data.index[state.year][state.commodity];
@@ -207,9 +290,20 @@
         .domain(extent)
         .range(colors);
 
-      areas.attr('fill', function(d) {
+      var fill = function(d) {
         return scale(d.sum);
-      });
+      };
+      areas.attr('fill', fill);
+
+      d3.selectAll('#states g.counties path.area')
+        .classed('empty', true)
+        .classed('full', false)
+        .filter(function(d) {
+          return d.rows.length;
+        })
+        .classed('empty', false)
+        .classed('full', true)
+        .attr('fill', fill);
 
       var steps = colors.map(function(color) {
         var domain = scale.invertExtent(color);
@@ -262,6 +356,9 @@
         .style('display', null)
         .text(text + '.');
     }
+  }
+
+  function updateStateMaps() {
   }
 
   function renderAreas(selection, geo) {
