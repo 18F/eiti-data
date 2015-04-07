@@ -124,3 +124,53 @@ path.empty {
   stroke: #333;
   stroke-width: 1;
 }
+
+.bars {
+  margin: .5em;
+}
+
+.bars .mark {
+  /* wide enough to accommodate the county name + negative bar width */
+  margin-left: 60%;
+  margin-bottom: .3em;
+  /* wide enough to accommodate the numeric value */
+  margin-right: 17%;
+  font-size: 85%;
+}
+
+.bars .mark .title {
+  position: absolute;
+  left: 0;
+  width: 60%;
+  text-overflow: ellipsis;
+}
+
+.bars .mark .bar {
+  position: relative;
+  display: inline-block;
+  vertical-align: bottom;
+  height: 1.2em;
+}
+
+.bars .mark .bar:before {
+  content: " ";
+  position: absolute;
+  display: block;
+  left: 0;
+  top: -.2em;
+  bottom: -.2em;
+  width: 1px;
+  background: #ccc;
+}
+
+.bars .mark .bar.negative:before {
+  left: 100%;
+}
+
+.bars .mark .bar .value {
+  white-space: nowrap;
+  position: absolute;
+  left: 100%;
+  margin-left: .5em;
+}
+

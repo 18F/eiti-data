@@ -14,6 +14,7 @@
   var data = {
     years: d3.set(),
     commodities: d3.set(),
+    countyFIPS: d3.set(),
     geo: {},
     revenues: {}
   };
@@ -70,7 +71,18 @@
 
       // stash these for use later
       data.geo.topology = topology;
+
       data.geo.counties = meshify(topology, 'counties');
+
+      /*
+       * XXX speedup: remove the counties that don't have any data
+       */
+      var fips = data.countyFIPS;
+      data.geo.counties.features = data.geo.counties.features
+        .filter(function(d) {
+          return fips.has(d.id);
+        });
+
 
       // save this, too, so we can look at it in the console
       data.revenues = revenues;
@@ -323,6 +335,27 @@
       var m = margin * scale;
       return [x - m, y - m, w + m * 2, h + m * 2].join(' ');
     });
+
+    var chart = div.append('div')
+      .attr('class', 'bars');
+
+    var mark = chart.selectAll('.mark')
+      .data(function(d) {
+        // XXX DC doesn't have counties
+        return countiesByState[d.properties.state] || [];
+      })
+      .enter()
+      .append('div')
+        .attr('class', 'mark county');
+
+    mark.append('span')
+      .attr('class', 'title')
+      .text(function(d) { return d.properties.county; });
+
+    mark.append('div')
+      .attr('class', 'bar')
+      .append('span')
+        .attr('class', 'value');
   }
 
   /*
@@ -390,14 +423,49 @@
         .classed('full', true)
         .attr('fill', fill);
 
-      var steps = colors.map(function(color) {
-        var domain = scale.invertExtent(color);
-        return {
-          color: color,
-          min: domain[0],
-          max: domain[1]
-        };
-      });
+      var charts = d3.selectAll('#states .bars');
+      var marks = charts.selectAll('.mark')
+        .style('display', function(d) {
+          return d.rows.length ? null : 'none';
+        })
+        .filter(function(d) {
+          return d.rows.length;
+        })
+        .sort(function(a, b) {
+          return d3.descending(a.sum, b.sum);
+        });
+
+      marks.select('.value')
+        .attr('data-value', function(d) { return d.sum; })
+        .text(function(d) {
+          return formatDollars(d.sum);
+        });
+
+      var width = d3.scale.linear()
+        .domain([0, extent[1]])
+        .range([0, 100]);
+      marks.select('.bar')
+        .style('background', fill)
+        .style('width', function(d) {
+          d._width = +width(d.sum).toFixed(1);
+          return Math.abs(d._width) + '%';
+        })
+        .classed('negative', function(d) {
+          return d._width < 0;
+        })
+        .style('margin-left', function(d) {
+          return d._width < 0 ? (d._width + '%') : 0;
+        });
+
+      var steps = colors
+        .map(function(color) {
+          var domain = scale.invertExtent(color);
+          return {
+            color: color,
+            min: domain[0],
+            max: domain[1]
+          };
+        });
 
       var item = legend.selectAll('.item')
         .data(steps);
@@ -411,7 +479,7 @@
         .attr('class', 'min');
       enter.append('span')
         .attr('class', 'sep')
-        .html(' &ndash; ');
+        .html(' to ');
       enter.append('span')
         .attr('class', 'max');
 
@@ -447,7 +515,6 @@
    * update the state maps
    */
   function updateStateMaps() {
-    // XXX
   }
 
   /*
@@ -458,6 +525,7 @@
   function parseRevenue(d) {
     data.commodities.add(d.Commodity);
     data.years.add(d.CY);
+    data.countyFIPS.add(d['County Code']);
     d.revenue = parseDollars(d['Royalty/Revenue']);
     return d;
   }
@@ -471,13 +539,19 @@
   function parseDollars(str) {
     return +str.trim()
       .replace(/^\$\s*/, '')
+      .replace(/,/g, '')
       .replace(/\((.+)\)/, '-$1');
   }
 
   // format a number back into its dollar form
-  var formatDecimal = d3.format(',.2f');
+  var formatDecimal = d3.format('$,.2s');
+  var suffixMap = {M: 'm', G: 'b', P: 't'};
   function formatDollars(num) {
-    return '$' + formatDecimal(num);
+    return formatDecimal(num)
+      // .replace(/\.0+/, '')
+      .replace(/[kMGP]$/, function(suffix) {
+        return suffixMap[suffix] || suffix;
+      });
   }
 
   function getter(key) {
@@ -491,6 +565,9 @@
   function identity(d) {
     return d;
   }
+
+  exports.parseDollars = parseDollars;
+  exports.formatDollars = formatDollars;
 
   exports.data = data;
 
