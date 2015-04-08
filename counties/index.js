@@ -29,6 +29,8 @@
     commodity: 'Oil & Gas'
   };
 
+  var masonry;
+
   // colorbrewer color schemes -> <select>
   d3.select('select[name="colors"]')
     .selectAll('option')
@@ -287,7 +289,7 @@
       .selectAll('path.area')
       .data(function(d) {
         // XXX DC doesn't have counties
-        return countiesByState[d.properties.state] || [];
+        return d.counties = countiesByState[d.properties.state] || [];
       })
       .enter()
       .append('path')
@@ -407,12 +409,15 @@
       var extent = d3.extent(sums);
       var min = extent[0];
       var max = extent[1];
+      // "balance" the extent by ensuring that the min and max
+      // have the same magnitude (-min === max)
       if (min < 0) {
         min = extent[0] = Math.min(min, -max);
         max = extent[1] = Math.max(max, -min);
       } else {
         min = extent[0] = -max;
       }
+      // stick a zero in the middle
       extent.splice(1, 0, 0);
       var scale = d3.scale.quantile()
         .domain(extent)
@@ -525,6 +530,32 @@
    * update the state maps
    */
   function updateStateMaps() {
+    // do this in a rAF() so the rendering thread isn't blocked
+    requestAnimationFrame(function() {
+      var states = d3.selectAll('#states .state')
+        .each(function(d) {
+          d._size = d.counties.reduce(function(x, c) {
+            return x + c.rows.length;
+          }, 0);
+        })
+        .attr('data-size', function(d) {
+          return d._size;
+        })
+        .sort(function(a, b) {
+          return d3.descending(a._size, b._size);
+        });
+
+      if (masonry) {
+        masonry.layout();
+      } else {
+        masonry = new Masonry('#states', {
+          columnWidth: 300,
+          gutter: 40,
+          itemSelector: '.state',
+          transitionDuration: 0
+        });
+      }
+    });
   }
 
   /*
