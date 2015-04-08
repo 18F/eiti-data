@@ -1,0 +1,7 @@
+{
+  "name": "eiti-maps-data",
+  "dependencies": {
+    "async": "^0.9.0",
+    "tito": "^0.3.0"
+  }
+}
