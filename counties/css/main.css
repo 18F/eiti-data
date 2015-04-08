@@ -85,9 +85,8 @@ path.empty {
 }
 
 #states .state {
-  float: left;
-  margin: 0 20px 20px 0;
   position: relative;
+  margin-bottom: 20px;
 }
 
 #states .state h3 {
@@ -108,9 +107,11 @@ path.empty {
   border: 1px solid #ddd;
 }
 
+/*
 #states .state#AK .map {
   width: 500px;
 }
+*/
 
 .state .map path.mask {
   stroke: #ccc;
@@ -144,6 +145,8 @@ path.empty {
   width: 60%;
   text-overflow: ellipsis;
   z-index: 100;
+  /* just in case it overlaps negative bars */
+  text-shadow: 0 0 3px #fff;
 }
 
 .bars .mark .bar {
