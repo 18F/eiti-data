@@ -14,13 +14,21 @@
   var data = {
     years: d3.set(),
     commodities: d3.set(),
-    countyFIPS: d3.set(),
     geo: {},
     revenues: {}
   };
 
   // US territories to ignore
   var TERRITORIES = d3.set(['PR', 'GU', 'VI']);
+
+  var DIVERGENT_COLORS = d3.set([
+    'PuOr',
+    'BrBG',
+    'PRGn',
+    'PiYG',
+    'RdBu',
+    'RdGy',
+  ]);
 
   // initial app state
   var state = {
@@ -36,7 +44,9 @@
     .selectAll('option')
       .data(Object.keys(colorbrewer)
         .filter(function(k) {
-          return !k.match(/^(Dark|Set|Paired|Pastel|Accent)/);
+          // only match schemes with 11 colors and exclude the ugly ones
+          return colorbrewer[k][11]
+             && !k.match(/^(Dark|Set|Paired|Pastel|Accent)/);
         }))
       .enter()
       .append('option')
@@ -63,13 +73,36 @@
   // load everything!
   queue()
     .defer(d3.json, 'data/geo/us-counties.json')
+    .defer(d3.csv, 'data/states.csv')
     .defer(d3.tsv, 'data/county-revenues.tsv')
-    .await(function onload(error, topology, revenues) {
+    .await(function onload(error, topology, states, revenues) {
       status.text('Loaded, prepping data...');
+
+      var stateByFIPS = d3.nest()
+        .key(function(d) { return d.FIPS; })
+        .rollup(function(d) {
+          return d[0];
+        })
+        .map(states);
+
+      var stateByAbbr = d3.nest()
+        .key(function(d) { return d.abbr; })
+        .rollup(function(d) {
+          return d[0];
+        })
+        .map(states);
 
       // parse the revenue numbers and add unique values
       // to the year and commodity sets
-      revenues.forEach(parseRevenue);
+      revenues.forEach(function(d) {
+        var state = stateByAbbr[d.St];
+        var fips = d['County Code'].substr(0, 2);
+        if (state.FIPS != fips) {
+          // console.log('FIPS mismatch:', fips, '(', state.abbr, ') should be', state.FIPS);
+          d['County Code'] = state.FIPS + d['County Code'].substr(2);
+        }
+        return parseRevenue(d);
+      });
 
       // stash these for use later
       data.geo.topology = topology;
@@ -118,12 +151,21 @@
 
       data.geo.states = meshify(topology, 'states');
 
+      var sums = [];
       // the index: year -> commodity -> FIPS
       data.index = d3.nest()
         .key(getter('CY'))
         .key(getter('Commodity'))
         .key(getter('County Code'))
+        .rollup(function(d) {
+          var sum = d3.sum(d, getter('revenue'));
+          sums.push(sum);
+          return sum;
+        })
         .map(revenues);
+
+      data.extent = d3.extent(sums);
+      console.log('extent:', data.extent);
 
       /*
       // XXX uncomment this to list all commodities
@@ -375,19 +417,14 @@
       .classed('empty', true)
       .classed('full', false)
       .filter(function(d) {
-        d.rows = index[d.id] || [];
-        return d.rows.length;
-      })
-      .each(function(d) {
-        d.sum = d3.sum(d.rows, function(row) {
-          return row.revenue;
-        });
+        d.sum = index[d.properties.FIPS];
+        return hasSum(d);
       })
       .classed('empty', false)
       .classed('full', true);
 
     var validData = areas.data();
-    var zeroSum = function(d) { return d.sum === 0; };
+    var zeroSum = function(d) { return !hasSum(d); };
     if (validData.length < 2) {
       console.warn('not enough data:', validData);
       valid = false;
@@ -401,27 +438,12 @@
     var legend = map.select('.legend');
     if (valid) {
 
-      var colors = colorbrewer[state.colors];
-      // max breaks for some schemes
-      colors = colors[state.breaks] || colors[9];
       var sums = validData.map(function(d) { return d.sum; });
+      var localExtent = d3.extent(sums);
+      var extent = data.extent; // localExtent;
 
-      var extent = d3.extent(sums);
-      var min = extent[0];
-      var max = extent[1];
-      // "balance" the extent by ensuring that the min and max
-      // have the same magnitude (-min === max)
-      if (min < 0) {
-        min = extent[0] = Math.min(min, -max);
-        max = extent[1] = Math.max(max, -min);
-      } else {
-        min = extent[0] = -max;
-      }
-      // stick a zero in the middle
-      extent.splice(1, 0, 0);
-      var scale = d3.scale.quantile()
-        .domain(extent)
-        .range(colors);
+      var scale = createDivergentScale(extent, state.colors, state.breaks);
+      var colors = scale.range();
 
       var fill = function(d) {
         return scale(d.sum);
@@ -431,9 +453,7 @@
       d3.selectAll('#states g.counties path.area')
         .classed('empty', true)
         .classed('full', false)
-        .filter(function(d) {
-          return d.rows.length;
-        })
+        .filter(hasSum)
         .classed('empty', false)
         .classed('full', true)
         .attr('fill', fill);
@@ -441,24 +461,20 @@
       var charts = d3.selectAll('#states .bars');
       var marks = charts.selectAll('.mark')
         .style('display', function(d) {
-          return d.rows.length ? null : 'none';
+          return hasSum(d) ? null : 'none';
         })
-        .filter(function(d) {
-          return d.rows.length;
-        })
+        .filter(hasSum)
         .sort(function(a, b) {
           return d3.descending(a.sum, b.sum);
         });
 
       marks.select('.value')
         .attr('data-value', function(d) { return d.sum; })
-        .text(function(d) {
+        .html(function(d) {
           return formatDollars(d.sum);
         });
 
-      var width = d3.scale.linear()
-        .domain(extent)
-        .range([-100, 0, 100]);
+      var width = createSizeScale(localExtent);
       marks.select('.bar')
         .style('background', fill)
         .style('width', function(d) {
@@ -469,18 +485,22 @@
           return d.sum < 0;
         })
         .style('margin-left', function(d) {
-          return d.sum < 0 ? (d._width + '%') : 0;
+          return d.sum < 0 ? (-Math.abs(d._width) + '%') : null;
         });
 
       var steps = colors
         .map(function(color) {
           var domain = scale.invertExtent(color);
+          if (domain[1] < 0 && domain[1] > -1) {
+            domain[1] = 0;
+          }
           return {
             color: color,
             min: domain[0],
             max: domain[1]
           };
-        });
+        })
+        .reverse();
 
       var item = legend.selectAll('.item')
         .data(steps);
@@ -491,19 +511,16 @@
       enter.append('span')
         .attr('class', 'color');
       enter.append('span')
-        .attr('class', 'min');
-      enter.append('span')
-        .attr('class', 'sep')
-        .html(' to ');
-      enter.append('span')
-        .attr('class', 'max');
+        .attr('class', 'label');
 
       item.select('.color')
         .style('background', function(d) { return d.color; });
-      item.select('.min')
-        .text(function(d) { return formatDollars(d.min); });
-      item.select('.max')
-        .text(function(d) { return formatDollars(d.max); });
+      item.select('.label')
+        .html(function(d) {
+          return d.min >= 0
+            ? '&ge; ' + formatDollars(d.min)
+            : '&le; ' + formatDollars(d.max);
+        });
 
       legend.select('.message')
         .style('display', 'none')
@@ -526,6 +543,66 @@
     }
   }
 
+  function createDivergentScale(extent, scheme, breaks) {
+    var min = extent[0];
+    var max = extent[1];
+    min = Math.min(min, -max);
+    max = Math.max(max, -min);
+
+    var colors = colorbrewer[scheme][breaks];
+    var cutoff = Math.floor(breaks / 2);
+    var left = colors.slice(0, cutoff);
+    var right = colors.slice(cutoff);
+
+    var negative = d3.scale.quantize()
+      .domain([min, 0])
+      .range(left);
+    var positive = d3.scale.quantize()
+      .domain([0, max])
+      .range(right);
+
+    var scale = function(x) {
+      return x < 0
+        ? negative(x)
+        : positive(x);
+    };
+
+    scale.negative = negative;
+    scale.positive = positive;
+
+    scale.invert = function(y) {
+      return y < 0
+        ? negative.invert(y)
+        : positive.invert(y);
+    };
+
+    scale.invertExtent = function(y) {
+      return colors.indexOf(y) < cutoff
+        ? negative.invertExtent(y)
+        : positive.invertExtent(y);
+    };
+
+    scale.domain = function() {
+      return [min, max];
+    };
+
+    scale.range = function() {
+      return colors.slice();
+    };
+
+    return scale;
+  }
+
+  function createSizeScale(extent, size) {
+    if (!size) size = 100;
+    var max = extent[1];
+    var min = Math.min(extent[0], -max);
+    return d3.scale.linear()
+      .domain([min, 0, max])
+      .range([-size, 0, size])
+      .clamp(true);
+  }
+
   /*
    * update the state maps
    */
@@ -534,15 +611,18 @@
     requestAnimationFrame(function() {
       var states = d3.selectAll('#states .state')
         .each(function(d) {
-          d._size = d.counties.reduce(function(x, c) {
-            return x + c.rows.length;
-          }, 0);
+          d._size = d.counties.filter(hasSum).length;
         })
         .attr('data-size', function(d) {
           return d._size;
         })
         .sort(function(a, b) {
           return d3.descending(a._size, b._size);
+        });
+
+      map.selectAll('path.state.area')
+        .classed('empty', function(d) {
+          return d._size === 0;
         });
 
       if (masonry) {
@@ -558,6 +638,10 @@
     });
   }
 
+  function hasSum(d) {
+    return !isNaN(d.sum);
+  }
+
   /*
    * parse a single row of the revenue dataset by converting its revenue
    * column into a number and adding its commodity and year values to the
@@ -566,7 +650,6 @@
   function parseRevenue(d) {
     data.commodities.add(d.Commodity);
     data.years.add(d.CY);
-    data.countyFIPS.add(d['County Code']);
     d.revenue = parseDollars(d['Royalty/Revenue']);
     return d;
   }
@@ -589,7 +672,7 @@
   var suffixMap = {M: 'm', G: 'b', P: 't'};
   function formatDollars(num) {
     return formatDecimal(num)
-      // .replace(/\.0+/, '')
+      .replace(/\.0+$/, '')
       .replace(/[kMGP]$/, function(suffix) {
         return suffixMap[suffix] || suffix;
       });
@@ -608,6 +691,7 @@
   }
 
   exports.parseDollars = parseDollars;
+  exports.createDivergentScale = createDivergentScale;
   exports.formatDollars = formatDollars;
 
   exports.data = data;

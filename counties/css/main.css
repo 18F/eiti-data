@@ -52,6 +52,10 @@ path.empty {
   stroke: #333;
 }
 
+#map path.state.area.empty {
+  fill: #fff;
+}
+
 .legend .title {
   font-size: inherit;
   font-weight: bold;
@@ -64,6 +68,10 @@ path.empty {
     height: 1em;
     vertical-align: baseline;
     margin-right: .5em;
+  }
+
+  .legend .item .sep {
+    color: #999;
   }
 
 #map {
