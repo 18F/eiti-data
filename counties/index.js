@@ -78,12 +78,12 @@
 
       /*
        * XXX speedup: remove the counties that don't have any data
-       */
       var fips = data.countyFIPS;
       data.geo.counties.features = data.geo.counties.features
         .filter(function(d) {
           return fips.has(d.id);
         });
+      */
 
 
       // save this, too, so we can look at it in the console
