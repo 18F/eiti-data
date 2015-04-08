@@ -440,7 +440,7 @@
 
       var sums = validData.map(function(d) { return d.sum; });
       var localExtent = d3.extent(sums);
-      var extent = data.extent; // localExtent;
+      var extent = localExtent; // data.extent;
 
       var scale = createDivergentScale(extent, state.colors, state.breaks);
       var colors = scale.range();
