@@ -72,93 +72,31 @@
 
   // load everything!
   queue()
-    .defer(d3.json, 'data/geo/us-counties.json')
-    .defer(d3.csv, 'data/states.csv')
+    .defer(d3.json, 'data/us-topology.json')
+    // .defer(d3.csv, 'data/states.csv')
     .defer(d3.tsv, 'data/county-revenues.tsv')
-    .await(function onload(error, topology, states, revenues) {
+    .await(function onload(error, topology, revenues) {
       status.text('Loaded, prepping data...');
-
-      var stateByFIPS = d3.nest()
-        .key(function(d) { return d.FIPS; })
-        .rollup(function(d) {
-          return d[0];
-        })
-        .map(states);
-
-      var stateByAbbr = d3.nest()
-        .key(function(d) { return d.abbr; })
-        .rollup(function(d) {
-          return d[0];
-        })
-        .map(states);
-
-      // parse the revenue numbers and add unique values
-      // to the year and commodity sets
-      revenues.forEach(function(d) {
-        var state = stateByAbbr[d.St];
-        var fips = d['County Code'].substr(0, 2);
-        if (state.FIPS != fips) {
-          // console.log('FIPS mismatch:', fips, '(', state.abbr, ') should be', state.FIPS);
-          d['County Code'] = state.FIPS + d['County Code'].substr(2);
-        }
-        return parseRevenue(d);
-      });
 
       // stash these for use later
       data.geo.topology = topology;
 
       data.geo.counties = meshify(topology, 'counties');
-
-      /*
-       * XXX speedup: remove the counties that don't have any data
-      var fips = data.countyFIPS;
-      data.geo.counties.features = data.geo.counties.features
-        .filter(function(d) {
-          return fips.has(d.id);
-        });
-      */
-
+      data.geo.states = meshify(topology, 'states');
 
       // save this, too, so we can look at it in the console
       data.revenues = revenues;
 
-      // group counties by state
-      var countiesByState = d3.nest()
-        .key(function(d) { return d.properties.state; })
-        .entries(topology.objects.counties.geometries);
-
-      // generate TopoJSON arcs for each state
-      var stateArcs = countiesByState
-        .filter(function(d) {
-          return !TERRITORIES.has(d.key);
-        })
-        .map(function(d) {
-          var state = d.key;
-          var geom = topojson.mergeArcs(topology, d.values);
-          geom.id = d.key;
-          geom.properties = {
-            state: d.key
-          };
-          return geom;
-        });
-
-      // add states into the topology
-      // (since they reference the same arcs)
-      topology.objects.states = {
-        type: 'GeometryCollection',
-        geometries: stateArcs
-      };
-
-      data.geo.states = meshify(topology, 'states');
-
       var sums = [];
       // the index: year -> commodity -> FIPS
       data.index = d3.nest()
-        .key(getter('CY'))
-        .key(getter('Commodity'))
-        .key(getter('County Code'))
+        .key(getter('year'))
+        .key(getter('commodity'))
+        .key(getter('FIPS'))
         .rollup(function(d) {
-          var sum = d3.sum(d, getter('revenue'));
+          var sum = d.length > 1
+            ? d3.sum(d, getter('revenue'))
+            : d.revenue;
           sums.push(sum);
           return sum;
         })
@@ -182,7 +120,7 @@
       */
 
       // get the set of unique years
-      var years = data.years = data.years.values()
+      var years = Object.keys(data.index)
         .sort(d3.ascending);
 
       // and set that as the range on the year input
@@ -331,7 +269,7 @@
       .selectAll('path.area')
       .data(function(d) {
         // XXX DC doesn't have counties
-        return d.counties = countiesByState[d.properties.state] || [];
+        return d.counties = countiesByState[d.id] || [];
       })
       .enter()
       .append('path')
@@ -386,7 +324,7 @@
     var mark = chart.selectAll('.mark')
       .data(function(d) {
         // XXX DC doesn't have counties
-        return countiesByState[d.properties.state] || [];
+        return countiesByState[d.id] || [];
       })
       .enter()
       .append('div')
@@ -642,31 +580,6 @@
     return !isNaN(d.sum);
   }
 
-  /*
-   * parse a single row of the revenue dataset by converting its revenue
-   * column into a number and adding its commodity and year values to the
-   * respective unique sets.
-   */
-  function parseRevenue(d) {
-    data.commodities.add(d.Commodity);
-    data.years.add(d.CY);
-    d.revenue = parseDollars(d['Royalty/Revenue']);
-    return d;
-  }
-
-  /*
-   * parse dollar amount strings into numbers:
-   *
-   * parseDollars(' $ 50.0 ') === 50
-   * parseDollars(' $ (100.0) ') === -100
-   */
-  function parseDollars(str) {
-    return +str.trim()
-      .replace(/^\$\s*/, '')
-      .replace(/,/g, '')
-      .replace(/\((.+)\)/, '-$1');
-  }
-
   // format a number back into its dollar form
   var formatDecimal = d3.format('$,.2s');
   var suffixMap = {M: 'm', G: 'b', P: 't'};
@@ -690,7 +603,6 @@
     return d;
   }
 
-  exports.parseDollars = parseDollars;
   exports.createDivergentScale = createDivergentScale;
   exports.formatDollars = formatDollars;
 
