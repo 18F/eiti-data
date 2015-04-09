@@ -1,5 +1,9 @@
 {
   "name": "eiti-maps-data",
+  "scripts": {
+    "update": "make data",
+    "test": "make test"
+  },
   "dependencies": {
     "async": "^0.9.0",
     "d3": "^3.5.5",
