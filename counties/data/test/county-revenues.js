@@ -1,6 +1,6 @@
 var tito = require('tito');
 var async = require('async');
-var util = require('./util');
+var util = require('../util');
 
 var read = util.readData;
 var map = util.map;
