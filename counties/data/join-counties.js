@@ -11,10 +11,8 @@ var read = util.readData;
 var map = util.map;
 var get = util.getter;
 
-var TERRITORIES = d3.set(['AS', 'PR', 'GU', 'VI']);
-
-var REVENUES_FILENAME = 'revenues-parsed.tsv';
 var TOPOLOGY_FILENAME = 'us-topology.json';
+var REVENUES_FILENAME = 'county-revenues.tsv';
 
 async.parallel({
   revenues: readRevenues,
@@ -30,29 +28,33 @@ async.parallel({
   var statesByAbbr = map(states, 'abbr', true);
 
   // turn them into GeoJSON features
-  var counties = topology.objects.counties;
-  var countyFeatures = topojson.feature(topology, counties).features;
-  counties = counties.geometries;
+  var counties = topology.objects.counties.geometries;
+  var countyFeatures = topojson.feature(topology, topology.objects.counties).features;
 
   // group counties by state to infer states
   var countiesByState = d3.nest()
     .key(function(d) {
       return d.properties.state;
     })
-    .entries(countyFeatures);
+    .entries(counties);
+
+  // American Samoa, Puerto Rico, Guam and Virgin Islands
+  var territories = d3.set(['AS', 'PR', 'GU', 'VI']);
 
   var stateFeatures = countiesByState
     // filter out territories
     .filter(function(d) {
-      return !TERRITORIES.has(d.key);
+      return !territories.has(d.key);
     })
     // merge counties into states
     .map(function(d) {
       var abbr = d.key;
-      var feature = topojson.merge(topology, d.values);
-      feature.id = abbr;
-      feature.properties = statesByAbbr[abbr];
-      return feature;
+      var geom = topojson.merge(topology, d.values);
+      return {
+        id: abbr,
+        properties: statesByAbbr[abbr],
+        geometry: geom
+      };
     });
 
   assert.equal(stateFeatures.length, 51);
@@ -113,9 +115,11 @@ async.parallel({
   var c = out.objects.counties.geometries;
   assert.ok(c[0].type, 'no type for county geometry' + JSON.stringify(c[0]));
 
+  console.warn('writing topology to:', TOPOLOGY_FILENAME);
   fs.createWriteStream(TOPOLOGY_FILENAME)
     .write(JSON.stringify(out));
 
+  console.warn('writing county revenues to:', REVENUES_FILENAME);
   streamify(parsed)
     .pipe(tito.formats.createWriteStream('tsv'))
     .pipe(fs.createWriteStream(REVENUES_FILENAME));
@@ -123,7 +127,7 @@ async.parallel({
 
 function readRevenues(done) {
   return read(
-    'county-revenues.tsv',
+    'input/county-revenues.tsv',
     tito.formats.createReadStream('tsv'),
     done
   );
@@ -131,7 +135,7 @@ function readRevenues(done) {
 
 function readStates(done) {
   return read(
-    'states.csv',
+    'input/states.csv',
     tito.formats.createReadStream('csv'),
     done
   );
