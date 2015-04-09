@@ -1,3 +1,31 @@
+#!/usr/bin/env node
+var yargs = require('yargs')
+  .usage('$0 [options]')
+  .describe('in-topo', 'input TopoJSON (assumed to be US counties)')
+  .default('in-topo', './geo/us-counties.json')
+  .describe('in-revenues', 'county revenues data (tab-separated)')
+  .default('in-revenues', './input/county-revenues.tsv')
+  .describe('in-states', 'states data CSV w/abbr, FIPS and name fields')
+  .default('in-states', './input/states.csv')
+  .describe('out-topo', 'output TopoJSON (with counties and states) to this file')
+  .default('out-topo', 'us-topology.json')
+  .describe('out-revenues', 'output parsed revenue data to this file')
+  .default('out-revenues', 'county-revenues.tsv')
+  .describe('all-counties', "don't filter out counties without data (which is the default)")
+  .alias('in-topo', 'it')
+  .alias('in-revenues', 'ir')
+  .alias('in-states', 'is')
+  .alias('out-topo', 'ot')
+  .alias('out-revenues', 'or')
+  .alias('all-counties', 'a')
+  .alias('h', 'help')
+  .wrap(120);
+var options = yargs.argv;
+
+if (options.help) {
+  return yargs.showHelp();
+}
+
 var fs = require('fs');
 var tito = require('tito');
 var async = require('async');
@@ -11,13 +39,24 @@ var read = util.readData;
 var map = util.map;
 var get = util.getter;
 
-var TOPOLOGY_FILENAME = 'us-topology.json';
-var REVENUES_FILENAME = 'county-revenues.tsv';
-
 async.parallel({
-  revenues: readRevenues,
-  states: readStates,
-  counties: readCounties
+  revenues: function readRevenues(done) {
+    return read(
+      options['in-revenues'],
+      tito.formats.createReadStream('tsv'),
+      done
+    );
+  },
+  states: function readStates(done) {
+    return read(
+      options['in-states'],
+      tito.formats.createReadStream('csv'),
+      done
+    );
+  },
+  counties: function readCounties(done) {
+    return done(null, require(options['in-topo']));
+  }
 }, function(error, data) {
   if (error) return console.error('error:', error);
 
@@ -89,9 +128,11 @@ async.parallel({
     .key(get('commodity'))
     .map(parsed);
 
-  countyFeatures = countyFeatures.filter(function(d) {
-    return d.id in index;
-  });
+  if (!options['all-counties']) {
+    countyFeatures = countyFeatures.filter(function(d) {
+      return d.id in index;
+    });
+  }
 
   var out = topojson.topology({
     counties: {
@@ -115,37 +156,12 @@ async.parallel({
   var c = out.objects.counties.geometries;
   assert.ok(c[0].type, 'no type for county geometry' + JSON.stringify(c[0]));
 
-  console.warn('writing topology to:', TOPOLOGY_FILENAME);
-  fs.createWriteStream(TOPOLOGY_FILENAME)
+  console.warn('writing topology to:', options['out-topo']);
+  fs.createWriteStream(options['out-topo'])
     .write(JSON.stringify(out));
 
-  console.warn('writing county revenues to:', REVENUES_FILENAME);
+  console.warn('writing county revenues to:', options['out-revenues']);
   streamify(parsed)
     .pipe(tito.formats.createWriteStream('tsv'))
-    .pipe(fs.createWriteStream(REVENUES_FILENAME));
+    .pipe(fs.createWriteStream(options['out-revenues']));
 });
-
-function readRevenues(done) {
-  return read(
-    'input/county-revenues.tsv',
-    tito.formats.createReadStream('tsv'),
-    done
-  );
-}
-
-function readStates(done) {
-  return read(
-    'input/states.csv',
-    tito.formats.createReadStream('csv'),
-    done
-  );
-}
-
-function readCounties(done) {
-  return done(null, require('./geo/us-counties.json'));
-}
-
-function rename(obj, src, dest) {
-  obj[dest] = obj[src];
-  delete obj[src];
-}
