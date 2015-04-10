@@ -34,6 +34,7 @@ var d3 = require('d3');
 var util = require('./util');
 var assert = require('assert');
 var streamify = require('stream-array');
+var through2 = require('through2');
 
 var read = util.readData;
 var map = util.map;
@@ -43,7 +44,11 @@ async.parallel({
   revenues: function readRevenues(done) {
     return read(
       options['in-revenues'],
-      tito.formats.createReadStream('tsv'),
+      function(stream) {
+        return stream
+        .pipe(tito.formats.createReadStream('tsv'))
+        .pipe(createRevenueParseStream());
+      },
       done
     );
   },
@@ -104,29 +109,16 @@ async.parallel({
   });
 
   // fix the revenue FIPS codes
-  var revenuesByState = map(revenues, 'St');
-  var parsed = [];
-  for (var abbr in revenuesByState) {
-    revenuesByState[abbr].forEach(function(d) {
-      var code = d['County Code'];
-      var state = statesByAbbr[d.St];
-      parsed.push({
-        year: d.CY,
-        commodity: d.Commodity,
-        type: d['Revenue Type'],
-        revenue: util.parseDollars(d['Royalty/Revenue']),
-        state: state.name,
-        county: d.County,
-        FIPS: state.FIPS + code.substr(2)
-      });
-    });
-  }
+  revenues.forEach(function(d) {
+    var state = statesByAbbr[d.state];
+    d.FIPS = state.FIPS + d.FIPS.substr(2);
+  });
 
   var index = d3.nest()
     .key(get('FIPS'))
-    .key(get('year')) // year
+    .key(get('year'))
     .key(get('commodity'))
-    .map(parsed);
+    .map(revenues);
 
   if (!options['all-counties']) {
     countyFeatures = countyFeatures.filter(function(d) {
@@ -161,7 +153,35 @@ async.parallel({
     .write(JSON.stringify(out));
 
   console.warn('writing county revenues to:', options['out-revenues']);
-  streamify(parsed)
+  streamify(revenues)
     .pipe(tito.formats.createWriteStream('tsv'))
     .pipe(fs.createWriteStream(options['out-revenues']));
 });
+
+function createRevenueParseStream() {
+  var revenueKey = 'Royalty/Revenue';
+  var parse = function(d) {
+    // console.warn(d);
+    return {
+      year:       d.CY,
+      state:      d.St,
+      // county:  d.County,
+      FIPS:       d['County Code'],
+      commodity:  d.Commodity,
+      // type:    d['Revenue Type'],
+      revenue:    util.parseDollars(d[revenueKey])
+    };
+  };
+
+  var i = 0;
+  return through2.obj(function parseRevenue(d, enc, next) {
+    // process.stderr.write('.');
+    var result = parse(d);
+    i++;
+    if (isNaN(result.revenue)) {
+      console.warn('Unable to parse revenue value: "%s" in row %d', d[revenueKey], i);
+      return next();
+    }
+    next(null, result);
+  })
+}
