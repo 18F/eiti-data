@@ -35,8 +35,16 @@ function identity(d) {
 
 function readData(filename, parse, done) {
   var data = [];
-  fs.createReadStream(filename)
-    .pipe(parse)
+
+  var stream = fs.createReadStream(filename);
+
+  if (typeof parse === 'function') {
+    stream = parse(stream);
+  } else {
+    stream = stream.pipe(parse);
+  }
+
+  return stream
     .on('data', function(d) {
       data.push(d);
     })
