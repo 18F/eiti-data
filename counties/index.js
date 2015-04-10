@@ -105,10 +105,13 @@
       data.extent = d3.extent(sums);
       console.log('extent:', data.extent);
 
-      /*
       // XXX uncomment this to list all commodities
-      var commodities = data.commodities = data.commodities.values()
-        .sort(d3.ascending)
+      var commodities = d3.set();
+      revenues.forEach(function(d) {
+        commodities.add(d.commodity);
+      });
+      commodities = commodities.values()
+        .sort(d3.ascending);
 
       d3.select('select[name="commodity"]')
         .selectAll('option')
@@ -117,7 +120,6 @@
         .append('option')
           .attr('value', identity)
           .text(function(d) { return d ? d : 'All'; });
-      */
 
       // get the set of unique years
       var years = Object.keys(data.index)
