@@ -1,6 +1,6 @@
 base_url = http://www.boem.gov/Oil-and-Gas-Energy-Program/Mapping-and-Data
 layers = alaska atlantic gulf pacific
-topojson_options ?= --simplify 1e-10
+topojson_options ?= 
 shp_filter ?= "MMS_PLAN_A IS NOT NULL AND MMS_PLAN_A NOT IN ('LND', 'NUS')"
 
 all: download reproject rezip
@@ -34,13 +34,16 @@ shp/%.shp: shp/%.zip
 	for file in $(basename $@)/*.???; do mv $$file $(basename $@).$${file##*.}; done
 	rmdir $(basename $@)
 
-topojson: $(foreach layer,$(layers),topo/$(layer).json)
+topojson: $(foreach layer,$(layers),topo/$(layer).json) topo/offshore.json
 
 geojson: $(foreach layer,$(layers),geo/$(layer).json)
 
+topo/offshore.json: $(foreach layer,$(layers),topo/$(layer).json)
+	topojson $^ -o $@
+
 topo/%.json: shp/%.shp
 	mkdir -p topo
-	ogr2ogr -f GeoJSON -t_srs EPSG:4326 /dev/stdout $< | topojson -p -o $@ $(topojson_options) -- $*=/dev/stdin 
+	ogr2ogr -f GeoJSON -t_srs EPSG:4326 -where $(shp_filter) /dev/stdout $< | topojson -p -o $@ $(topojson_options) -- $*=/dev/stdin
 
 geo/%.json: topo/%.json
 	mkdir -p geo
