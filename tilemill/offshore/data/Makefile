@@ -40,7 +40,7 @@ geojson: $(foreach layer,$(layers),geo/$(layer).json)
 
 topo/%.json: shp/%.shp
 	mkdir -p topo
-	ogr2ogr -f GeoJSON -t_srs EPSG:4326 /dev/stdout $< | topojson -p -o $@ $(topojson_options)
+	ogr2ogr -f GeoJSON -t_srs EPSG:4326 /dev/stdout $< | topojson -p -o $@ $(topojson_options) -- $*=/dev/stdin 
 
 geo/%.json: topo/%.json
 	mkdir -p geo
